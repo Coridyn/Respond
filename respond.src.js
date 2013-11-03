@@ -1,5 +1,5 @@
-/*! matchMedia() polyfill - Test a CSS media type/query in JS. Authors & copyright (c) 2012: Scott Jehl, Paul Irish, Nicholas Zakas. Dual MIT/BSD license */
-/*! NOTE: If you're already including a window.matchMedia polyfill via Modernizr or otherwise, you don't need this part */
+/*! @preserve matchMedia() polyfill - Test a CSS media type/query in JS. Authors & copyright (c) 2012: Scott Jehl, Paul Irish, Nicholas Zakas. Dual MIT/BSD license */
+/*! @preserve NOTE: If you're already including a window.matchMedia polyfill via Modernizr or otherwise, you don't need this part */
 
 window.matchMedia = window.matchMedia || (function( doc, undefined ) {
 
@@ -38,7 +38,7 @@ window.matchMedia = window.matchMedia || (function( doc, undefined ) {
 
 
 
-/*! Respond.js v1.3.0: min/max-width media query polyfill. (c) Scott Jehl. MIT/GPLv2 Lic. j.mp/respondjs  */
+/*! @preserve Respond.js v1.3.0: min/max-width media query polyfill. (c) Scott Jehl. MIT/GPLv2 Lic. j.mp/respondjs  */
 (function( win ){
 
 	"use strict";
@@ -213,6 +213,7 @@ window.matchMedia = window.matchMedia || (function( doc, undefined ) {
 		eminpx,
 		
 		//enable/disable styles
+		prevWidth = -1,
 		applyMedia = function( fromResize ){
 			var name = "clientWidth",
 				docElemProp = docElem[ name ],
@@ -220,7 +221,10 @@ window.matchMedia = window.matchMedia || (function( doc, undefined ) {
 				styleBlocks	= {},
 				lastLink = links[ links.length-1 ],
 				now = (new Date()).getTime();
-
+			
+//			// Coridyn:
+//			doc.sizeList.push(currWidth);
+			
 			//throttle resize calls	
 			if( fromResize && lastCall && now - lastCall < resizeThrottle ){
 				win.clearTimeout( resizeDefer );
@@ -230,41 +234,58 @@ window.matchMedia = window.matchMedia || (function( doc, undefined ) {
 			else {
 				lastCall = now;
 			}
+			
+			// Coridyn: Width caching.
+			if (currWidth == prevWidth){
+				return;
+			}
+			prevWidth = currWidth;
+			// End of width caching.
 										
-			for( var i in mediastyles ){
-				if( mediastyles.hasOwnProperty( i ) ){
-					var thisstyle = mediastyles[ i ],
-						min = thisstyle.minw,
-						max = thisstyle.maxw,
-						minnull = min === null,
-						maxnull = max === null,
-						em = "em";
-					
-					if( !!min ){
-						min = parseFloat( min ) * ( min.indexOf( em ) > -1 ? ( eminpx || getEmValue() ) : 1 );
+			for( var i = 0; i < mediastyles.length; i++ ){
+				var thisstyle = mediastyles[ i ],
+					min = thisstyle.minw,
+					max = thisstyle.maxw,
+					minnull = min === null,
+					maxnull = max === null,
+					em = "em";
+				
+				if( !!min ){
+					min = parseFloat( min ) * ( min.indexOf( em ) > -1 ? ( eminpx || getEmValue() ) : 1 );
+				}
+				if( !!max ){
+					max = parseFloat( max ) * ( max.indexOf( em ) > -1 ? ( eminpx || getEmValue() ) : 1 );
+				}
+				
+				// if there's no media query at all (the () part), or min or max is not null, and if either is present, they're true
+				if( !thisstyle.hasquery || ( !minnull || !maxnull ) && ( minnull || currWidth >= min ) && ( maxnull || currWidth <= max ) ){
+					if( !styleBlocks[ thisstyle.media ] ){
+						styleBlocks[ thisstyle.media ] = [];
 					}
-					if( !!max ){
-						max = parseFloat( max ) * ( max.indexOf( em ) > -1 ? ( eminpx || getEmValue() ) : 1 );
-					}
-					
-					// if there's no media query at all (the () part), or min or max is not null, and if either is present, they're true
-					if( !thisstyle.hasquery || ( !minnull || !maxnull ) && ( minnull || currWidth >= min ) && ( maxnull || currWidth <= max ) ){
-						if( !styleBlocks[ thisstyle.media ] ){
-							styleBlocks[ thisstyle.media ] = [];
-						}
-						styleBlocks[ thisstyle.media ].push( rules[ thisstyle.rules ] );
-					}
+					styleBlocks[ thisstyle.media ].push( rules[ thisstyle.rules ] );
 				}
 			}
 			
+			// 2013-10-30 Coridyn:
+			// Consolidate styleblocks.
+			for (i = 0; i < styleBlocks.length; i++){
+				// Consolidate each media type down to a list with a single item.
+				var mediaList = styleBlocks[ i ];
+				// Check the number of selectors?
+				mediaList = [mediaList.join('\n')];
+				styleBlocks[ i ] = mediaList;
+			}
+			
+			
 			//remove any existing respond style element(s)
-			for( var j in appendedEls ){
-				if( appendedEls.hasOwnProperty( j ) ){
-					if( appendedEls[ j ] && appendedEls[ j ].parentNode === head ){
-						head.removeChild( appendedEls[ j ] );
-					}
+			for( var j = 0; j < appendedEls.length; j++ ){
+				if( appendedEls[ j ] && appendedEls[ j ].parentNode === head ){
+					head.removeChild( appendedEls[ j ] );
 				}
 			}
+			// 2013-10-30 Coridyn:
+			// Remove references to previous styles to avoid memory leaks.
+			appendedEls.length = 0;
 			
 			//inject active styles, grouped by media type
 			for( var k in styleBlocks ){
@@ -329,9 +350,40 @@ window.matchMedia = window.matchMedia || (function( doc, undefined ) {
 	//expose update for re-running respond later on
 	respond.update = ripCSS;
 	
-	//adjust on resize
+//	//adjust on resize
+//	doc.resetCallList = function(){
+//		doc.callList = [];
+//		doc.sizeList = [];
+//	}
+//	doc.printCallList = function(){
+//		var callList = doc.callList;
+//		
+//		var deltaList = [];
+//		
+//		var prev = 0;
+//		var delta = 0;
+//		var total = 0;
+//		for (var i = 0; i < callList.length; i++){
+//			if (i > 0){
+//				delta = callList[i] - prev;
+//			}
+//			total += delta;
+//
+//			var pos = (i % 2) == 0 ? 'start ' + (i / 2) : 'end ' + Math.floor(i / 2);
+//			deltaList.push(pos + ': delta=' + delta + ', (total:'+total+') (time: ' + callList[i] + ')');
+//			prev = callList[i];
+//		}
+//		console.log(deltaList.join('\n'));
+//
+//		var sizeList = doc.sizeList;
+//		console.log(sizeList.join('\n'));
+//	}
+//	doc.resetCallList();
+	
 	function callMedia(){
+//		doc.callList.push((new Date()).getTime());
 		applyMedia( true );
+//		doc.callList.push((new Date()).getTime());
 	}
 	if( win.addEventListener ){
 		win.addEventListener( "resize", callMedia, false );
