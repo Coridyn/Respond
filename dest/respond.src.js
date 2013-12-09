@@ -94,7 +94,7 @@
     }
     ret = eminpx = parseFloat(ret);
     return ret;
-  }, applyMedia = function(fromResize) {
+  }, prevWidth = -1, applyMedia = function(fromResize) {
     var name = "clientWidth", docElemProp = docElem[name], currWidth = doc.compatMode === "CSS1Compat" && docElemProp || doc.body[name] || docElemProp, styleBlocks = {}, lastLink = links[links.length - 1], now = new Date().getTime();
     if (fromResize && lastCall && now - lastCall < resizeThrottle) {
       w.clearTimeout(resizeDefer);
@@ -103,6 +103,10 @@
     } else {
       lastCall = now;
     }
+    if (currWidth === prevWidth) {
+      return;
+    }
+    prevWidth = currWidth;
     for (var i in mediastyles) {
       if (mediastyles.hasOwnProperty(i)) {
         var thisstyle = mediastyles[i], min = thisstyle.minw, max = thisstyle.maxw, minnull = min === null, maxnull = max === null, em = "em";
@@ -127,6 +131,13 @@
         }
       }
     }
+    appendedEls.length = 0;
+    console.log("appendedEls.length=", appendedEls.length);
+    for (i = 0; i < styleBlocks.length; i++) {
+      var mediaList = styleBlocks[i];
+      mediaList = [ mediaList.join("\n") ];
+      styleBlocks[i] = mediaList;
+    }
     for (var k in styleBlocks) {
       if (styleBlocks.hasOwnProperty(k)) {
         var ss = doc.createElement("style"), css = styleBlocks[k].join("\n");
@@ -141,6 +152,7 @@
         appendedEls.push(ss);
       }
     }
+    console.log("style count=", doc.querySelectorAll("style").length);
   }, translate = function(styles, href, media) {
     var qs = styles.replace(respond.regex.keyframes, "").match(respond.regex.media), ql = qs && qs.length || 0;
     href = href.substring(0, href.lastIndexOf("/"));

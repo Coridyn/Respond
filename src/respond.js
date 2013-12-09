@@ -133,7 +133,10 @@
 
 			return ret;
 		},
-
+		
+		// 2013-09-12 Coridyn:
+		prevWidth = -1,
+		
 		//enable/disable styles
 		applyMedia = function( fromResize ){
 			var name = "clientWidth",
@@ -152,6 +155,13 @@
 			else {
 				lastCall = now;
 			}
+			
+			// 2013-12-09 Coridyn: Width caching.
+			if (currWidth === prevWidth){
+				return;
+			}
+			prevWidth = currWidth;
+			// End of width caching.
 
 			for( var i in mediastyles ){
 				if( mediastyles.hasOwnProperty( i ) ){
@@ -187,6 +197,20 @@
 					}
 				}
 			}
+			// 2013-10-30 Coridyn:
+			// Remove references to previous styles to avoid memory leaks.
+			appendedEls.length = 0;
+			console.log('appendedEls.length=', appendedEls.length);
+
+			// 2013-10-30 Coridyn:
+			// Consolidate styleblocks.
+			for (i = 0; i < styleBlocks.length; i++){
+				// Consolidate each media type down to a list with a single item.
+				var mediaList = styleBlocks[ i ];
+				// Check the number of selectors?
+				mediaList = [mediaList.join('\n')];
+				styleBlocks[ i ] = mediaList;
+			}
 
 			//inject active styles, grouped by media type
 			for( var k in styleBlocks ){
@@ -212,6 +236,10 @@
 					appendedEls.push( ss );
 				}
 			}
+			
+			// 2013-12-09 Coridyn:
+			// IE style block count.
+			console.log('style count=', doc.querySelectorAll('style').length);
 		},
 		//find media blocks in css text, convert to style blocks
 		translate = function( styles, href, media ){
